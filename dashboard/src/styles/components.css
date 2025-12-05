@@ -1,0 +1,98 @@
+/* Component Styles */
+
+/* Stat Cards */
+.stat-card {
+    background: white;
+    border-radius: 0.5rem;
+    border: 1px solid #f1f5f9;
+    padding: 1.25rem;
+    transition: box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* Risk Tier Badges */
+.risk-badge {
+    display: inline-block;
+    padding: 0.125rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.risk-badge.safe {
+    background-color: #d1fae5;
+    color: #065f46;
+}
+
+.risk-badge.low {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.risk-badge.medium {
+    background-color: #ffedd5;
+    color: #9a3412;
+}
+
+.risk-badge.high {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+.risk-badge.critical {
+    background-color: #fecaca;
+    color: #7f1d1d;
+}
+
+/* Query Display */
+.query-display {
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 0.875rem;
+    background-color: #1e293b;
+    color: #e2e8f0;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* Live indicator pulse animation */
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.live-indicator {
+    animation: pulse 2s ease-in-out infinite;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}

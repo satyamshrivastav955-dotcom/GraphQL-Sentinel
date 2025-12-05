@@ -1,0 +1,7 @@
+{
+    "autoencoder": "backend/core/models/autoencoder/ae_model.joblib",
+    "random_forest": "backend/core/models/random_forest/rf_model.joblib",
+    "lstm": "backend/core/models/lstm/lstm_model.pth",
+    "gnn": "backend/core/models/gnn/gnn_model.pth",
+    "ensemble": "backend/core/models/ensemble/ensemble_model.joblib"
+}

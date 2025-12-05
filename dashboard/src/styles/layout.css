@@ -1,0 +1,30 @@
+/* Dashboard Layout Styles */
+
+.dashboard-container {
+    min-height: 100vh;
+    background-color: #f8fafc;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+}
+
+@media (min-width: 1024px) {
+    .dashboard-grid {
+        grid-template-columns: repeat(12, 1fr);
+    }
+}
+
+.panel-left {
+    grid-column: span 4;
+}
+
+.panel-center {
+    grid-column: span 4;
+}
+
+.panel-right {
+    grid-column: span 4;
+}

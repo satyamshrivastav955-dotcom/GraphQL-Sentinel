@@ -1,0 +1,10 @@
+experiment_name: "baseline_run"
+random_seed: 42
+models:
+  - autoencoder
+  - random_forest
+  - ensemble
+training:
+  epochs: 10
+  batch_size: 32
+  validation_split: 0.2

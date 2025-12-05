@@ -1,0 +1,25 @@
+{
+    "structural": [
+        "depth",
+        "width",
+        "total_fields",
+        "max_nested_fields",
+        "fragment_count",
+        "directive_count"
+    ],
+    "semantic": [
+        "introspection_score",
+        "deprecated_field_count",
+        "sensitive_field_count",
+        "mutation_score"
+    ],
+    "behavioral": [
+        "query_rate",
+        "error_rate",
+        "unique_ip_count"
+    ],
+    "cost": [
+        "complexity_score",
+        "token_count"
+    ]
+}

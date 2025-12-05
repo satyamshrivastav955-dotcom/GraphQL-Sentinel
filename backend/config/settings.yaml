@@ -1,0 +1,32 @@
+app:
+  name: "GraphQL Sentinel"
+  version: "1.0.0"
+  host: "0.0.0.0"
+  port: 8000
+  debug: true
+
+security:
+  policy:
+    default_action: "ALLOW" # ALLOW, THROTTLE, BLOCK
+    thresholds:
+      autoencoder_reconstruction_error: 0.02
+      random_forest_prob: 0.4
+      ensemble_score: 20 # Lowered to catch more attacks
+    risk_tier_thresholds:
+      safe: 20          # 0-20: SAFE
+      low_risk: 40      # 21-40: LOW_RISK
+      medium_risk: 65   # 41-65: MEDIUM_RISK
+      high_risk: 85     # 66-85: HIGH_RISK
+      # 86-100: CRITICAL
+  throttling:
+    rate_limit: 100 # requests per minute
+    window: 60 # seconds
+
+feature_extraction:
+  max_depth: 15
+  max_aliases: 50
+  max_tokens: 5000
+
+logging:
+  level: "INFO"
+  save_path: "backend/storage/logs/decisions.jsonl"

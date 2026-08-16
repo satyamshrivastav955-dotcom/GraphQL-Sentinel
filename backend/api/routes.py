@@ -56,8 +56,9 @@ async def graphql_proxy(request: Request, body: GraphQLRequest):
     
     client_info = {
         "client_id": request.headers.get("X-Client-ID", "unknown"),
-        "ip": request.client.host,
-        "user_agent": request.headers.get("User-Agent", "unknown")
+        "ip": request.client.host if request.client else "unknown",
+        "user_agent": request.headers.get("User-Agent", "unknown"),
+        "headers": {k.lower(): v for k, v in request.headers.items()}
     }
     
     result = await gateway.process_request(body.model_dump(), client_info)

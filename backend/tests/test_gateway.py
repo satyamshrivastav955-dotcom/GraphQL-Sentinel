@@ -107,3 +107,33 @@ def test_gateway_logs_into_configured_subdirectory(tmp_path):
 def test_policy_decision_mapping(tier, expected):
     policy = SecurityPolicy({})
     assert policy.decide({"risk_tier": tier, "ensemble_score": 50}) == expected
+
+
+def test_gateway_forwards_to_upstream(tmp_path):
+    import httpx
+
+    def handler(request: httpx.Request):
+        assert request.url == "http://mock-upstream/graphql"
+        body = json.loads(request.content)
+        assert "query" in body
+        return httpx.Response(
+            status_code=200,
+            json={"data": {"user": {"name": "Alice"}}},
+            headers={"content-type": "application/json"}
+        )
+
+    transport = httpx.MockTransport(handler)
+    mock_client = httpx.AsyncClient(transport=transport)
+
+    cfg = {
+        "logging": {"save_path": str(tmp_path / "decisions.jsonl")},
+        "upstream": {"url": "http://mock-upstream/graphql"}
+    }
+    gw = GraphQLGateway(cfg, {}, http_client=mock_client)
+
+    result = process(gw, {"query": "query { user { name } }"})
+    assert result["data"] == {"user": {"name": "Alice"}}
+    assert "extensions" in result
+    assert result["extensions"]["security"]["decision"] == "ALLOW"
+    assert result["extensions"]["security"]["risk_tier"] == "SAFE"
+

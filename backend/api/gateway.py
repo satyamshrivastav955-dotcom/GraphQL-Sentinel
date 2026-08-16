@@ -4,6 +4,7 @@ import time
 import logging
 import uuid
 from datetime import datetime
+import httpx
 from ..core.features.feature_pipeline import FeaturePipeline
 from ..core.features.behavioral import set_behavioral_store
 from ..core.features.behavioral_store import BehavioralStore
@@ -14,13 +15,24 @@ from ..core.security_engine.explainability import ExplainabilityEngine
 logger = logging.getLogger(__name__)
 
 class GraphQLGateway:
-    def __init__(self, config: dict, model_paths: dict):
+    def __init__(self, config: dict, model_paths: dict, http_client: httpx.AsyncClient = None):
         self.config = config
         self.feature_pipeline = FeaturePipeline()
         self.scorer = SecurityScorer(model_paths, config)  # Pass config
         self.policy = SecurityPolicy(config.get('security', {}).get('policy', {}))
         self.explainer = ExplainabilityEngine()
         self.log_path = config.get('logging', {}).get('save_path', 'backend/storage/logs/decisions.jsonl')
+
+        # Upstream proxy configuration
+        upstream_cfg = config.get('upstream', {})
+        self.upstream_url = upstream_cfg.get('url') or os.environ.get('UPSTREAM_GRAPHQL_URL')
+        self.upstream_timeout = float(upstream_cfg.get('timeout_seconds', 10.0))
+        limits = httpx.Limits(
+            max_connections=int(upstream_cfg.get('max_connections', 100)),
+            max_keepalive_connections=int(upstream_cfg.get('max_keepalive_connections', 20))
+        )
+        self.http_client = http_client or httpx.AsyncClient(limits=limits, timeout=self.upstream_timeout)
+        self._owns_client = http_client is None
 
         # Ensure the log directory exists before the first write
         if self.log_path:
@@ -32,6 +44,11 @@ class GraphQLGateway:
         
         # Log counter for unique IDs
         self.log_counter = 0
+
+    async def close(self):
+        """Close managed HTTP connection pool."""
+        if self._owns_client and self.http_client:
+            await self.http_client.aclose()
 
     async def process_request(self, request_data: dict, client_info: dict):
         start_time = time.time()
@@ -101,9 +118,59 @@ class GraphQLGateway:
                     }
                 }
             
-            # Simulate forwarding to backend
-            # In a real app, we would post to the actual GraphQL server here
-            # For demo, we return a mock success response
+            # 8. Upstream Proxy or Simulation Response
+            if self.upstream_url:
+                upstream_payload = {
+                    "query": query,
+                    "variables": request_data.get("variables"),
+                    "operationName": request_data.get("operationName")
+                }
+                headers = {"Content-Type": "application/json"}
+                client_headers = client_info.get("headers") or {}
+                for h_name in ("authorization", "x-request-id", "x-api-key", "apollographql-client-name", "apollographql-client-version"):
+                    if h_name in client_headers:
+                        headers[h_name] = client_headers[h_name]
+
+                try:
+                    resp = await self.http_client.post(self.upstream_url, json=upstream_payload, headers=headers)
+                    if resp.headers.get("content-type", "").startswith("application/json"):
+                        upstream_data = resp.json()
+                    else:
+                        upstream_data = {"data": resp.text}
+                except Exception as up_err:
+                    logger.error(f"Upstream GraphQL service error: {up_err}")
+                    return {
+                        "errors": [{"message": "Upstream GraphQL service unavailable"}],
+                        "extensions": {
+                            "security": {
+                                "decision": decision,
+                                "risk_tier": scores.get('risk_tier', 'UNKNOWN'),
+                                "score": scores.get('ensemble_score'),
+                                "latency_ms": (time.time() - start_time) * 1000
+                            }
+                        }
+                    }
+
+                if not isinstance(upstream_data, dict):
+                    upstream_data = {"data": upstream_data}
+                if "extensions" not in upstream_data or not isinstance(upstream_data["extensions"], dict):
+                    upstream_data["extensions"] = {}
+                upstream_data["extensions"]["security"] = {
+                    "decision": decision,
+                    "risk_tier": scores.get('risk_tier', 'UNKNOWN'),
+                    "score": scores.get('ensemble_score'),
+                    "model_scores": {
+                        "autoencoder": scores.get('autoencoder', 0),
+                        "random_forest": scores.get('random_forest', 0),
+                        "lstm": scores.get('lstm', 0),
+                        "gnn": scores.get('gnn', 0)
+                    },
+                    "explanations": explanations,
+                    "latency_ms": (time.time() - start_time) * 1000
+                }
+                return upstream_data
+
+            # Fallback simulation mode (standalone/demo when no upstream is configured)
             return {
                 "data": {"message": "Query allowed and processed"},
                 "extensions": {

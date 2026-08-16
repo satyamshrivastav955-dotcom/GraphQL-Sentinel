@@ -5,6 +5,14 @@ app:
   port: 8000
   debug: true
 
+upstream:
+  # Upstream GraphQL API endpoint. Leave empty for standalone/mock simulation mode.
+  # Can also be overridden with UPSTREAM_GRAPHQL_URL environment variable.
+  url: ""
+  timeout_seconds: 10.0
+  max_connections: 100
+  max_keepalive_connections: 20
+
 security:
   policy:
     default_action: "ALLOW" # ALLOW, THROTTLE, BLOCK

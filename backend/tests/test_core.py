@@ -36,3 +36,24 @@ def test_scorer_mock():
     
     assert "ensemble_score" in scores
     assert 0 <= scores["ensemble_score"] <= 100
+
+
+def test_ring_buffer_operations():
+    from backend.storage.ring_buffer import LogRingBuffer
+
+    rb = LogRingBuffer(max_entries=3)
+    rb.append({"id": "q1", "val": 1})
+    rb.append({"id": "q2", "val": 2})
+    rb.append({"id": "q3", "val": 3})
+
+    assert rb.count() == 3
+    assert rb.get_by_id("q1")["val"] == 1
+    assert rb.get_by_id("q2")["val"] == 2
+
+    # Overflow should evict q1
+    rb.append({"id": "q4", "val": 4})
+    assert rb.count() == 3
+    assert rb.get_by_id("q1") is None
+    assert rb.get_by_id("q4")["val"] == 4
+    assert [e["id"] for e in rb.get_all()] == ["q2", "q3", "q4"]
+

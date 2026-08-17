@@ -22,6 +22,15 @@ class GraphQLRequest(BaseModel):
     operationName: Optional[str] = None
 
 
+from ..storage.ring_buffer import ring_buffer as default_ring_buffer
+
+
+def _get_ring_buffer():
+    if gateway is not None and getattr(gateway, "ring_buffer", None):
+        return gateway.ring_buffer
+    return default_ring_buffer
+
+
 def _log_path() -> str:
     """Single source of truth for the decision log path.
 
@@ -36,11 +45,15 @@ def _log_path() -> str:
 
 
 def read_all_logs():
-    """Read all logs from the JSONL file."""
+    """Retrieve decision logs from memory ring buffer (fast path), falling back to disk if empty."""
+    rb = _get_ring_buffer()
+    if rb.count() > 0:
+        return rb.get_all()
+
     logs = []
     log_path = _log_path()
     if os.path.exists(log_path):
-        with open(log_path, 'r') as f:
+        with open(log_path, 'r', encoding="utf-8") as f:
             for line in f:
                 try:
                     logs.append(json.loads(line.strip()))
@@ -67,29 +80,41 @@ async def graphql_proxy(request: Request, body: GraphQLRequest):
 
 @router.get("/api/stream")
 async def get_stream():
-    """Return last N logs for the live stream."""
+    """Return last N logs for the live stream with sub-millisecond latency."""
+    rb = _get_ring_buffer()
+    if rb.count() > 0:
+        return rb.get_recent(50)
     logs = read_all_logs()
     return logs[-50:] if len(logs) > 50 else logs
 
 
 @router.get("/api/live")
 async def live_stream():
-    """SSE endpoint for real-time log streaming."""
+    """Instant push SSE endpoint backed by ring buffer subscriber queue."""
+    rb = _get_ring_buffer()
+    queue = rb.subscribe()
+
     async def event_generator():
-        last_count = 0
-        while True:
-            logs = read_all_logs()
-            current_count = len(logs)
-            
-            if current_count > last_count:
-                # Send new logs
-                new_logs = logs[last_count:]
-                for log in new_logs:
-                    yield f"data: {json.dumps(log)}\n\n"
-                last_count = current_count
-            
-            await asyncio.sleep(1)  # Check every second
-    
+        try:
+            # Send initial backlog of recent events (up to 25)
+            backlog = rb.get_recent(25)
+            if not backlog:
+                backlog = read_all_logs()[-25:]
+            for entry in backlog:
+                yield f"data: {json.dumps(entry)}\n\n"
+
+            while True:
+                try:
+                    entry = await asyncio.wait_for(queue.get(), timeout=15.0)
+                    yield f"data: {json.dumps(entry)}\n\n"
+                except asyncio.TimeoutError:
+                    # Heartbeat comment to keep SSE connection alive
+                    yield ": keepalive\n\n"
+        except asyncio.CancelledError:
+            pass
+        finally:
+            rb.unsubscribe(queue)
+
     return StreamingResponse(
         event_generator(),
         media_type="text/event-stream",
@@ -99,6 +124,7 @@ async def live_stream():
             "Access-Control-Allow-Origin": "*",
         }
     )
+
 
 
 @router.get("/api/metrics")
@@ -253,24 +279,26 @@ async def get_metrics():
 
 @router.get("/api/query/{query_id}")
 async def get_query_details(query_id: str):
-    """Get detailed information about a specific query by ID."""
-    logs = read_all_logs()
-    
-    # Find log by ID
-    log = None
-    log_index = -1
-    for idx, entry in enumerate(logs):
-        if entry.get('id') == query_id:
-            log = entry
-            log_index = idx
-            break
+    """Get detailed information about a specific query by ID with O(1) buffer lookup."""
+    rb = _get_ring_buffer()
+    log = rb.get_by_id(query_id)
+    log_index = 0
+
+    if not log:
+        logs = read_all_logs()
+        for idx, entry in enumerate(logs):
+            if entry.get('id') == query_id:
+                log = entry
+                log_index = idx
+                break
     
     if not log:
         raise HTTPException(status_code=404, detail="Query not found")
     
     # Get client behavior (last 10 scores from same client)
     client_id = log.get('client_id', 'unknown')
-    client_logs = [l for l in logs if l.get('client_id') == client_id][-10:]
+    all_entries = rb.get_all() or read_all_logs()
+    client_logs = [l for l in all_entries if l.get('client_id') == client_id][-10:]
     client_timeline = [
         {
             "time": l.get('timestamp', '')[-8:],  # HH:MM:SS
@@ -298,14 +326,15 @@ async def get_query_details(query_id: str):
 @router.get("/api/explain/{query_id}")
 async def get_explanation(query_id: str):
     """Get explainability data for a specific query by ID."""
-    logs = read_all_logs()
+    rb = _get_ring_buffer()
+    log = rb.get_by_id(query_id)
     
-    # Find log by ID
-    log = None
-    for entry in logs:
-        if entry.get('id') == query_id:
-            log = entry
-            break
+    if not log:
+        logs = read_all_logs()
+        for entry in logs:
+            if entry.get('id') == query_id:
+                log = entry
+                break
     
     if not log:
         raise HTTPException(status_code=404, detail="Query not found")

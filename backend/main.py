@@ -48,6 +48,15 @@ async def startup_event():
     )
     os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
 
+    # Warm up in-memory telemetry ring buffer from disk
+    from backend.storage.ring_buffer import ring_buffer
+    ring_buffer.load_from_file(save_path)
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    if routes.gateway:
+        await routes.gateway.close()
+
 app.include_router(routes.router)
 
 if __name__ == "__main__":

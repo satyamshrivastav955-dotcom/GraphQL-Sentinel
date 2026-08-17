@@ -11,12 +11,14 @@ from ..core.features.behavioral_store import BehavioralStore
 from ..core.security_engine.scorer import SecurityScorer
 from ..core.security_engine.policy import SecurityPolicy
 from ..core.security_engine.explainability import ExplainabilityEngine
+from ..storage.ring_buffer import LogRingBuffer, ring_buffer as default_ring_buffer
 
 logger = logging.getLogger(__name__)
 
 class GraphQLGateway:
-    def __init__(self, config: dict, model_paths: dict, http_client: httpx.AsyncClient = None):
+    def __init__(self, config: dict, model_paths: dict, http_client: httpx.AsyncClient = None, ring_buffer: LogRingBuffer = None):
         self.config = config
+        self.ring_buffer = ring_buffer if ring_buffer is not None else default_ring_buffer
         self.feature_pipeline = FeaturePipeline()
         self.scorer = SecurityScorer(model_paths, config)  # Pass config
         self.policy = SecurityPolicy(config.get('security', {}).get('policy', {}))
@@ -204,9 +206,13 @@ class GraphQLGateway:
             }
 
     def _log_decision(self, entry):
-        # Append to JSONL file
+        # 1. In-memory ring buffer for sub-millisecond retrieval and SSE broadcast
+        if self.ring_buffer is not None:
+            self.ring_buffer.append(entry)
+
+        # 2. Append to JSONL file on disk for persistent audit trail
         try:
-            with open(self.log_path, 'a') as f:
+            with open(self.log_path, 'a', encoding="utf-8") as f:
                 f.write(json.dumps(entry) + "\n")
         except Exception as e:
             logger.error(f"Failed to log decision: {e}")

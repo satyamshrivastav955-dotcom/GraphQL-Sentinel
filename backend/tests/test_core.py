@@ -57,3 +57,35 @@ def test_ring_buffer_operations():
     assert rb.get_by_id("q4")["val"] == 4
     assert [e["id"] for e in rb.get_all()] == ["q2", "q3", "q4"]
 
+
+def test_scorer_hybrid_ml_and_explainability():
+    from backend.core.security_engine.explainability import ExplainabilityEngine
+
+    model_paths = {
+        "autoencoder": "backend/core/models/autoencoder/ae_model.joblib",
+        "random_forest": "backend/core/models/random_forest/rf_model.joblib",
+        "ensemble": "backend/core/models/ensemble/ensemble_model.joblib",
+    }
+    scorer = SecurityScorer(model_paths)
+    features = {
+        "max_depth": 10,
+        "query_length": 350,
+        "introspection_score": 1,
+        "field_count": 8,
+        "alias_count": 2,
+        "sensitive_field_count": 1,
+    }
+    scores = scorer.score(features)
+    assert "ensemble_score" in scores
+    assert "risk_tier" in scores
+    assert scores["risk_tier"] in ("HIGH_RISK", "CRITICAL")
+    assert "autoencoder" in scores
+    assert "random_forest" in scores
+
+    explainer = ExplainabilityEngine()
+    explanations = explainer.explain(features, scores)
+    assert len(explanations) > 0
+    feature_names = [e["feature"] for e in explanations]
+    assert any("introspection" in f or "depth" in f or "anomaly" in f for f in feature_names)
+
+

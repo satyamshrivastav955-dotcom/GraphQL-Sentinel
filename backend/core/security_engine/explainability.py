@@ -116,6 +116,21 @@ class ExplainabilityEngine:
                 "score": 0.6,
                 "description": f"High query rate ({features['query_rate']:.1f} qps) - abuse"
             })
+
+        # ML Model anomaly explanations
+        if scores.get('autoencoder', 0) > 0.15:
+            explanations.append({
+                "feature": "autoencoder_anomaly",
+                "score": float(scores.get('autoencoder', 0)),
+                "description": "Autoencoder detected structural anomaly compared to baseline"
+            })
+
+        if scores.get('random_forest', 0) > 0.35:
+            explanations.append({
+                "feature": "random_forest_classification",
+                "score": float(scores.get('random_forest', 0)),
+                "description": "Random Forest identified query structure matching known attack signatures"
+            })
         
         explanations.sort(key=lambda x: x['score'], reverse=True)
         return explanations[:5]

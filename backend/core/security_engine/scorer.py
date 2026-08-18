@@ -115,40 +115,65 @@ class SecurityScorer:
         if attack_signals >= 3:
             base_score += 20  # Multi-vector attack confirmed
         
-        # ========== ML MODEL SCORES (For reference, not primary driver) ==========
-        # Autoencoder
+        # ========== ML MODEL INFERENCE & INTEGRATION ==========
+        ae_score = 0.0
         if 'autoencoder' in self.models:
             try:
                 X_ae = [[depth, length]]
                 X_pred = self.models['autoencoder'].predict(X_ae)
                 mse = ((X_ae[0][0] - X_pred[0][0])**2 + (X_ae[0][1] - X_pred[0][1])**2) / 2
-                scores['autoencoder'] = round(min(1.0, mse / 100), 3)
+                ae_score = round(min(1.0, mse / 100), 3)
+                scores['autoencoder'] = ae_score
             except Exception as e:
                 logger.debug(f"Autoencoder scoring error: {e}")
                 scores['autoencoder'] = 0.0
         else:
             scores['autoencoder'] = 0.0
 
-        # Random Forest
+        # Random Forest with named features
+        rf_score = 0.0
         if 'random_forest' in self.models:
             try:
-                X_rf = [[depth, length, 1 if introspection > 0 else 0]]
+                import pandas as pd
+                X_rf = pd.DataFrame(
+                    [[depth, length, 1 if introspection > 0 else 0]],
+                    columns=['depth', 'length', 'introspection']
+                )
                 probs = self.models['random_forest'].predict_proba(X_rf)
-                scores['random_forest'] = round(probs[0][1], 3)
+                rf_score = round(float(probs[0][1]), 3)
+                scores['random_forest'] = rf_score
             except Exception as e:
                 logger.debug(f"Random Forest scoring error: {e}")
                 scores['random_forest'] = 0.0
         else:
             scores['random_forest'] = 0.0
 
-        # LSTM and GNN placeholders (TODO: implement)
+        # Ensemble Logistic Regression model integration
+        ensemble_ml_score = max(ae_score, rf_score)
+        if 'ensemble' in self.models:
+            try:
+                probs = self.models['ensemble'].predict_proba([[ae_score, rf_score]])
+                ensemble_ml_score = round(float(probs[0][1]), 3)
+            except Exception as e:
+                logger.debug(f"Ensemble model scoring error: {e}")
+
+        # LSTM and GNN placeholders
         scores['lstm'] = 0.0
         scores['gnn'] = 0.0
-        
-        # ========== FINAL SCORE ==========
-        final_score = min(100, max(0, base_score))
+
+        # ========== HYBRID FINAL SCORE CALCULATION ==========
+        # Deterministic rules guarantee zero false-negatives on high-severity attacks.
+        # ML model detects structural/behavioral shifts on borderline queries.
+        if base_score >= 60.0:
+            final_score = base_score
+        else:
+            ml_impact = ensemble_ml_score * 40.0
+            # Blend: base score augmented by ML anomaly signals
+            final_score = max(base_score, (base_score * 0.8) + (ml_impact * 0.2))
+
+        final_score = min(100.0, max(0.0, final_score))
         scores['ensemble_score'] = round(final_score, 1)
-        
+
         # ========== RISK TIER (Config-driven) ==========
         if final_score <= self.tier_thresholds['safe']:
             scores['risk_tier'] = 'SAFE'
@@ -160,7 +185,7 @@ class SecurityScorer:
             scores['risk_tier'] = 'HIGH_RISK'
         else:
             scores['risk_tier'] = 'CRITICAL'
-        
-        logger.debug(f"Final Score={final_score}, Tier={scores['risk_tier']}")
-        
+
+        logger.debug(f"Final Score={final_score}, Tier={scores['risk_tier']}, ML={ensemble_ml_score}")
+
         return scores

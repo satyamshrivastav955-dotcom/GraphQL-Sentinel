@@ -66,39 +66,42 @@ class SecurityScorer:
         # Start with base score of 0
         base_score = 0.0
         
-        # 1. INTROSPECTION CHECK (MEDIUM RISK minimum)
+        # 1. INTROSPECTION CHECK (MEDIUM RISK minimum: 41-65)
         if introspection > 0:
-            base_score += 45  # Pushes to MEDIUM RISK
+            base_score += 48  # Pushes to MEDIUM_RISK (41-65)
         
         # 2. DEPTH ANALYSIS
         if depth <= 3:
-            base_score += 0  # Normal
+            base_score += 0  # Normal SAFE
         elif depth <= 5:
-            base_score += 5  # Slightly concerning
+            base_score += 5  # SAFE
         elif depth <= 8:
-            base_score += 15 + (depth - 5) * 5  # Concerning
+            base_score += 18 + (depth - 5) * 5  # Depth 6: 23, Depth 7: 28, Depth 8: 33 -> LOW_RISK
         elif depth <= 12:
-            base_score += 30 + (depth - 8) * 8  # High risk
+            base_score += 52 + (depth - 8) * 8  # Depth 9: 60, Depth 10: 68, Depth 11: 76 -> HIGH_RISK
         else:
-            base_score += 60 + (depth - 12) * 5  # Critical
+            base_score += 72 + (depth - 12) * 5  # Depth 15: 87 -> CRITICAL
         
         # 3. ALIAS ABUSE (Batching attack)
         if alias_count > 3:
-            base_score += (alias_count - 3) * 5
+            base_score += 20 + (alias_count - 3) * 10  # 8 aliases: 70 -> HIGH_RISK
         
-        # 4. FIELD COUNT (Resource exhaustion)
-        if breadth > 10:
-            base_score += (breadth - 10) * 1
+        # 4. FIELD COUNT & PAGINATION MULTIPLIERS (Resource exhaustion)
+        max_mult = features.get('max_multiplier', 1)
+        if breadth >= 8 and depth <= 5 and alias_count <= 3:
+            base_score += 20 + (breadth - 8) * 1  # Shallow query with many fields -> LOW_RISK
+        elif max_mult >= 100:
+            base_score += 22  # High pagination limit on list -> LOW_RISK
         
         # 5. SENSITIVE FIELD ACCESS
         if sensitive_fields > 0:
-            base_score += sensitive_fields * 10
+            base_score += sensitive_fields * 15
         
         # 6. MUTATION WITH SENSITIVE FIELDS
         if mutation_score > 0:
             base_score += 15
             if sensitive_fields > 0:
-                base_score += 20  # Dangerous combo
+                base_score += 25  # Dangerous combo
         
         # 7. FRAGMENT ABUSE
         if fragment_count > 2:
@@ -107,13 +110,13 @@ class SecurityScorer:
         # 8. MULTI-VECTOR ATTACK DETECTION
         attack_signals = 0
         if introspection > 0: attack_signals += 1
-        if depth > 8: attack_signals += 1
+        if depth >= 8: attack_signals += 1
         if alias_count > 5: attack_signals += 1
         if fragment_count > 2: attack_signals += 1
         if sensitive_fields > 0: attack_signals += 1
         
-        if attack_signals >= 3:
-            base_score += 20  # Multi-vector attack confirmed
+        if attack_signals >= 2:
+            base_score += 20  # Multi-vector attack confirmation boost
         
         # ========== ML MODEL INFERENCE & INTEGRATION ==========
         ae_score = 0.0

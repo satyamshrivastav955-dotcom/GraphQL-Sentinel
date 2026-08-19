@@ -6,6 +6,12 @@ import sys
 import os
 sys.path.append(os.getcwd())
 
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 from backend.core.parser.ast_parser import ASTParser
 from backend.core.features.feature_pipeline import FeaturePipeline
 from backend.core.security_engine.scorer import SecurityScorer
@@ -20,7 +26,8 @@ def run_full_verification():
     pipeline = FeaturePipeline()
     model_paths = {
         "autoencoder": "backend/core/models/autoencoder/ae_model.joblib",
-        "random_forest": "backend/core/models/random_forest/rf_model.joblib"
+        "random_forest": "backend/core/models/random_forest/rf_model.joblib",
+        "ensemble": "backend/core/models/ensemble/ensemble_model.joblib",
     }
     scorer = SecurityScorer(model_paths)
     policy = SecurityPolicy({"thresholds": {"ensemble_score": 20}})
@@ -75,10 +82,10 @@ def run_full_verification():
         
         # Check result
         if expected_tier == actual_tier:
-            status = "✓ PASS"
+            status = "[PASS]"
             results["PASS"] += 1
         else:
-            status = "✗ FAIL"
+            status = "[FAIL]"
             results["FAIL"] += 1
             failed_tests.append((expected_tier, description, actual_tier, score))
         

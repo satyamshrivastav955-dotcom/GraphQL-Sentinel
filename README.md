@@ -402,39 +402,50 @@ This makes Sentinel suitable for both:
 
 ---
 
-# 🔌 GraphQL Security Gateway
+# 🔌 High-Performance Reverse Proxy Gateway
 
-The long-term goal of Sentinel is to operate as a drop-in security layer:
-
-```text
-                Client
-                  │
-                  ▼
-        ┌─────────────────────┐
-        │  GraphQL Sentinel   │
-        │     Gateway         │
-        └──────────┬──────────┘
-                   │
-                   ▼
-        ┌─────────────────────┐
-        │ Existing GraphQL    │
-        │       API           │
-        └─────────────────────┘
-```
-
-Example:
+Sentinel operates as a transparent, high-throughput reverse proxy deployed in front of your upstream GraphQL service:
 
 ```text
-Client
-  ↓
-http://localhost:8080/graphql
-  ↓
-GraphQL Sentinel
-  ↓
-http://graphql-api:4000/graphql
+                 GraphQL Client
+                       │
+                       ▼  POST /graphql-proxy
+             ┌─────────────────────┐
+             │  GraphQL Sentinel   │ ◄── Analyzes AST, Scorer & Policies
+             │   Reverse Proxy     │ ◄── In-Memory Ring Buffer Telemetry
+             └──────────┬──────────┘
+                        │
+         ┌──────────────┴──────────────┐
+         │ (If ALLOW)                  │ (If BLOCK)
+         ▼                             ▼
+┌──────────────────┐          ┌──────────────────┐
+│ Upstream GraphQL │          │ Immediate 403 /  │
+│   API Server     │          │ Policy Error     │
+└──────────────────┘          └──────────────────┘
 ```
 
-This allows security controls to be introduced without rewriting the application itself.
+### Upstream Configuration
+
+Set your upstream server in `backend/config/settings.yaml` or via environment variables:
+
+```yaml
+upstream:
+  url: "http://your-graphql-service:4000/graphql"
+  timeout_seconds: 10.0
+  max_connections: 100
+  max_keepalive_connections: 20
+```
+
+Alternatively, pass `UPSTREAM_GRAPHQL_URL` at runtime:
+
+```bash
+export UPSTREAM_GRAPHQL_URL="http://your-graphql-service:4000/graphql"
+```
+
+- **Transparent Header & Token Forwarding**: Automatically forwards `Authorization`, `X-Request-ID`, and Apollo client headers.
+- **Connection Pooling**: Managed via `httpx.AsyncClient` with reusable keep-alive connection pools.
+- **Security Audit Injection**: Injects risk tier, ensemble score, model predictions, and explanation traces into `extensions.security` without mutating upstream payload data.
+- **In-Memory Ring Buffer**: Caches recent telemetry in an $O(1)$ circular ring buffer (`backend/storage/ring_buffer.py`) with zero-latency SSE broadcasting, while concurrently writing persistent audit logs to disk.
 
 ---
 

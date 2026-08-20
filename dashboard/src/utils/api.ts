@@ -50,9 +50,15 @@ export const getExplanation = async (id: string) => {
   return response.data;
 };
 
-export const submitQuery = async (query: string, clientId?: string) => {
-  const response = await api.post('/graphql-proxy',
-    { query },
+export const submitQuery = async (
+  query: string,
+  clientId?: string,
+  variables?: Record<string, any>,
+  operationName?: string
+) => {
+  const response = await api.post(
+    '/graphql-proxy',
+    { query, variables, operationName },
     { headers: clientId ? { 'X-Client-ID': clientId } : {} }
   );
   return response.data;

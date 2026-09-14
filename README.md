@@ -2,16 +2,18 @@
 
 ### AI-Powered Runtime Security Gateway for GraphQL APIs
 
+[![CI](https://github.com/satyamshrivastav955-dotcom/GraphQL-Sentinel/actions/workflows/ci.yml/badge.svg)](https://github.com/satyamshrivastav955-dotcom/GraphQL-Sentinel/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-Backend-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![React](https://img.shields.io/badge/React-Dashboard-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
 [![GraphQL](https://img.shields.io/badge/GraphQL-Security-E10098?logo=graphql&logoColor=white)](https://graphql.org/)
-[![Security](https://img.shields.io/badge/Focus-API%20Security-critical?logo=shield&logoColor=white)](#security-model)
+[![Security Model](https://img.shields.io/badge/Security-Defense--in--Depth-critical?logo=shield&logoColor=white)](#security-model)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 > **Detect. Explain. Score. Protect.**
 >
-> GraphQL Sentinel is an intelligent security gateway designed to detect, analyze, explain, and mitigate malicious or abnormal GraphQL operations in real time.
+> GraphQL Sentinel is an intelligent security gateway designed to detect, analyze, explain, and mitigate malicious or abnormal GraphQL operations in real time. Operating as a transparent reverse proxy, Sentinel inspects inbound queries using deterministic AST checks and pre-trained machine learning ensembles before they ever reach your upstream resolvers.
 
 ---
 

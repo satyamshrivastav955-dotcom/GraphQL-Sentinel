@@ -767,58 +767,42 @@ sentinel_gateway_errors_total
 
 # 🏗️ Architecture
 
-A production-oriented architecture can be organized as:
+The repository is organized into distinct backend, dashboard, and machine learning components:
 
 ```text
-graphQL-sentinel/
-│
+GraphQL-Sentinel/
+├── .github/workflows/
+│   └── ci.yml                 # Automated backend test workflow
 ├── backend/
 │   ├── api/
-│   ├── gateway/
-│   ├── analyzer/
-│   ├── detection/
-│   ├── policies/
-│   ├── scoring/
-│   ├── models/
-│   ├── storage/
-│   └── services/
-│
-├── frontend/
-│   ├── components/
-│   ├── pages/
-│   ├── charts/
-│   ├── security/
-│   └── dashboard/
-│
-├── ml/
-│   ├── datasets/
-│   ├── training/
-│   ├── evaluation/
-│   ├── models/
-│   └── notebooks/
-│
-├── attacks/
-│   ├── depth/
-│   ├── complexity/
-│   ├── introspection/
-│   ├── aliases/
-│   └── batch/
-│
-├── tests/
-│   ├── unit/
-│   ├── integration/
-│   ├── security/
-│   └── benchmark/
-│
+│   │   ├── gateway.py         # Reverse proxy gateway & upstream forwarder
+│   │   └── routes.py          # REST endpoints (/analyze, /graphql, /policies)
+│   ├── config/
+│   │   ├── feature_config.json# Feature normalization configuration
+│   │   ├── model_paths.json   # Model checkpoint locations
+│   │   └── settings.yaml      # Security policies & gateway settings
+│   ├── core/
+│   │   ├── features/          # AST structural, semantic & behavioral pipelines
+│   │   ├── models/            # Pre-trained Autoencoder, RF & Ensemble models
+│   │   ├── parser/            # GraphQL AST parser & validation helpers
+│   │   └── security_engine/   # Policy engine, risk scoring & explainability
+│   ├── storage/               # Runtime audit logs (JSONL format)
+│   ├── tests/                 # Core engine & gateway test suite
+│   ├── main.py                # FastAPI application entrypoint
+│   └── requirements.txt       # Backend dependencies
+├── dashboard/                 # React 19 real-time security dashboard
+│   ├── public/                # Static assets and template HTML
+│   ├── src/                   # Components, SSE event stream, charts
+│   ├── tailwind.config.js     # Tailwind CSS styling configuration
+│   └── package.json           # Frontend dependencies & npm scripts
 ├── docker/
-│
-├── docs/
-│
-├── scripts/
-│
-├── docker-compose.yml
-├── Dockerfile
-├── Makefile
+│   ├── Dockerfile.backend     # Backend production image
+│   ├── Dockerfile.dashboard   # Dashboard frontend image
+│   └── docker-compose.yml     # Complete stack composition
+├── ml/                        # Training pipelines & synthetic data generators
+├── evaluate_models.py         # Model performance evaluation benchmark
+├── verify_system.py           # End-to-end system verification script
+├── test_tiers.py              # Multi-tier policy and threshold tests
 └── README.md
 ```
 

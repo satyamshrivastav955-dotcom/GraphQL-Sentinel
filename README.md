@@ -913,7 +913,7 @@ cd GraphQL-Sentinel
 
 ---
 
-## Backend
+## Backend Setup
 
 Create a virtual environment:
 
@@ -927,23 +927,30 @@ Activate it on Linux/macOS:
 source .venv/bin/activate
 ```
 
-Windows:
+Windows (PowerShell):
 
 ```powershell
-.venv\Scripts\activate
+.venv\Scripts\Activate.ps1
 ```
 
-Install dependencies:
+Install backend dependencies:
 
 ```bash
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
 ```
 
-Start the API:
+> 💡 **Pre-trained Models**: GraphQL Sentinel ships with pre-trained anomaly detection models (Autoencoder, Random Forest, and Ensemble) located in `backend/core/models/`. You do not need to generate synthetic data or train models before launching the server.
+
+Start the FastAPI gateway **from the repository root** (the application relies on the root-level `backend` package namespace):
 
 ```bash
-uvicorn app.main:app --reload
+uvicorn backend.main:app --reload --port 8000
 ```
+
+The gateway API and interactive documentation will be available at:
+- Gateway Endpoint: `http://localhost:8000/graphql`
+- Interactive Swagger UI: `http://localhost:8000/docs`
+- Health Check: `http://localhost:8000/health`
 
 ---
 

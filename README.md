@@ -954,23 +954,40 @@ The gateway API and interactive documentation will be available at:
 
 ---
 
-## Frontend
+## Dashboard Setup
+
+The interactive security dashboard is built with React 19, TypeScript, Tailwind CSS, and Recharts.
+
+Navigate to the dashboard directory:
 
 ```bash
-cd frontend
-
-npm install
-
-npm run dev
+cd dashboard
 ```
 
-The development dashboard should then be available at:
+Install frontend dependencies:
+
+```bash
+npm install
+```
+
+Start the React development server:
+
+```bash
+npm start
+```
+
+The dashboard will open at:
 
 ```text
 http://localhost:3000
 ```
 
-> Adjust the commands above to match the actual project entry points if the repository uses different paths/scripts.
+### Dashboard Capabilities
+
+- 📊 **Real-Time Telemetry**: Connects to the backend via Server-Sent Events (SSE) to display incoming queries and threat decisions live.
+- ⚡ **Risk Scoring & Breakdown**: Visualizes AST depth, complexity weights, anomaly scores, and individual rule triggers.
+- 🛡️ **Interactive Policy Controls**: Inspect and tune thresholds for query depth, rate limits, and introspection blocking.
+- 🧪 **Live Attack Simulator**: Test defensive reactions against depth attacks, alias overloading, and schema enumeration with one click.
 
 ---
 

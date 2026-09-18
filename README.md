@@ -1019,6 +1019,50 @@ docker compose down
 
 ---
 
+# 🧪 Running Tests & Verification
+
+Sentinel includes unit tests, integration tests, and verification scripts covering AST parsing, feature extraction, policy decisions, and gateway reverse-proxy behavior.
+
+### 1. Backend Test Suite
+
+Run unit and integration tests with `pytest`:
+
+```bash
+# Ensure test dependencies are installed
+pip install pytest httpx
+
+# Run the test suite with verbose reporting
+python -m pytest backend/tests -v
+```
+
+Continuous integration runs this exact suite on every push and pull request via the [GitHub Actions CI Workflow](.github/workflows/ci.yml).
+
+### 2. End-to-End System Verification
+
+Verify the entire pipeline end-to-end (query parser -> feature pipeline -> ML scorer -> policy engine -> decision logging):
+
+```bash
+python verify_system.py
+```
+
+### 3. Multi-Tier Policy Thresholds
+
+Test policy tier decisions across various query profiles:
+
+```bash
+python test_tiers.py
+```
+
+### 4. Machine Learning Model Evaluation
+
+Benchmark accuracy, precision, and latency across pre-trained anomaly models:
+
+```bash
+python evaluate_models.py
+```
+
+---
+
 # ⚡ Example Request
 
 A normal GraphQL request:

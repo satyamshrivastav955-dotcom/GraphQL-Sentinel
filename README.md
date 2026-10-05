@@ -25,28 +25,17 @@ A complete system for GraphQL security monitoring, anomaly detection, and blocki
 
 ### Running the System
 
-#### 1. Generate Synthetic Data
-First, generate the synthetic dataset to train the models (or use as a fallback).
+The anomaly-detection models (autoencoder, random forest, ensemble) ship
+pre-trained in `backend/core/models/`, so no separate training step is needed.
+
+#### 1. Run Backend
+Start the FastAPI server **from the repository root** (the app imports the
+`backend` package):
 ```bash
-python ml/preprocessing/generate_synthetic.py --n 1000000 --seed 42
+uvicorn backend.main:app --reload --port 8000
 ```
 
-#### 2. Train Models
-Train the anomaly detection models.
-```bash
-python ml/training/train_autoencoder.py
-python ml/training/train_random_forest.py
-# ... run other training scripts as needed
-```
-
-#### 3. Run Backend
-Start the FastAPI server.
-```bash
-cd backend
-uvicorn main:app --reload --port 8000
-```
-
-#### 4. Run Dashboard
+#### 2. Run Dashboard
 Start the React frontend.
 ```bash
 cd dashboard
@@ -59,7 +48,18 @@ Alternatively, run everything with Docker Compose:
 docker-compose up --build
 ```
 
+### Running Tests
+Backend unit tests (parser, feature pipeline, scorer, gateway, policy):
+```bash
+pip install -r backend/requirements.txt
+pip install pytest
+python -m pytest backend/tests -v
+```
+CI runs the same suite on every push and pull request (see
+`.github/workflows/ci.yml`).
+
 ## Project Structure
 - `backend/`: FastAPI application, security engine, and feature extraction.
-- `ml/`: Data preprocessing, synthetic generation, and training scripts.
+- `backend/core/models/`: Pre-trained anomaly-detection models (joblib).
 - `dashboard/`: React frontend for real-time monitoring.
+- `backend/storage/`: Runtime decision logs (generated, not tracked in git).

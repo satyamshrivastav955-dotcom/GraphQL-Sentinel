@@ -1,4 +1,5 @@
 import json
+import os
 import time
 import logging
 import uuid
@@ -20,6 +21,10 @@ class GraphQLGateway:
         self.policy = SecurityPolicy(config.get('security', {}).get('policy', {}))
         self.explainer = ExplainabilityEngine()
         self.log_path = config.get('logging', {}).get('save_path', 'backend/storage/logs/decisions.jsonl')
+
+        # Ensure the log directory exists before the first write
+        if self.log_path:
+            os.makedirs(os.path.dirname(self.log_path) or ".", exist_ok=True)
         
         # Initialize behavioral store
         self.behavioral_store = BehavioralStore(window_seconds=60, max_history=100)
@@ -31,9 +36,9 @@ class GraphQLGateway:
     async def process_request(self, request_data: dict, client_info: dict):
         start_time = time.time()
         query = request_data.get('query')
-        
-        if not query:
-            return {"errors": [{"message": "No query provided"}]}
+
+        if not isinstance(query, str) or not query.strip():
+            return {"errors": [{"message": "No valid query provided"}]}
 
         try:
             # 1. Feature Extraction
@@ -120,11 +125,12 @@ class GraphQLGateway:
             
         except Exception as e:
             logger.error(f"Error processing request: {e}", exc_info=True)
+            # Never expose internal exception details to clients.
             return {
                 "errors": [{"message": "Internal security system error"}],
                 "extensions": {
                     "security": {
-                        "error": str(e),
+                        "decision": "ERROR",
                         "latency_ms": (time.time() - start_time) * 1000
                     }
                 }

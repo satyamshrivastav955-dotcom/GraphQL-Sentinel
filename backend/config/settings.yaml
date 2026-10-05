@@ -30,3 +30,13 @@ feature_extraction:
 logging:
   level: "INFO"
   save_path: "backend/storage/logs/decisions.jsonl"
+
+cors:
+  # Allowed browser origins for the dashboard/API.
+  # Avoid "*" together with allow_credentials: true.
+  allow_origins:
+    - "http://localhost:5173"
+    - "http://localhost:3000"
+  allow_credentials: true
+  allow_methods: ["*"]
+  allow_headers: ["*"]

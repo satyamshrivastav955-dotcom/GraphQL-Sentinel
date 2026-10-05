@@ -13,7 +13,7 @@ from .gateway import GraphQLGateway
 router = APIRouter()
 gateway = None  # Initialized in main startup
 
-LOG_PATH = "backend/storage/logs/decisions.jsonl"
+DEFAULT_LOG_PATH = "backend/storage/logs/decisions.jsonl"
 
 
 class GraphQLRequest(BaseModel):
@@ -22,16 +22,30 @@ class GraphQLRequest(BaseModel):
     operationName: Optional[str] = None
 
 
+def _log_path() -> str:
+    """Single source of truth for the decision log path.
+
+    Prefers the gateway's configured path (from settings.yaml); falls back
+    to the default when the gateway has not been initialized yet.
+    """
+    if gateway is not None:
+        configured = getattr(gateway, "log_path", None)
+        if configured:
+            return configured
+    return DEFAULT_LOG_PATH
+
+
 def read_all_logs():
     """Read all logs from the JSONL file."""
     logs = []
-    if os.path.exists(LOG_PATH):
-        with open(LOG_PATH, 'r') as f:
+    log_path = _log_path()
+    if os.path.exists(log_path):
+        with open(log_path, 'r') as f:
             for line in f:
                 try:
                     logs.append(json.loads(line.strip()))
-                except:
-                    pass
+                except (json.JSONDecodeError, ValueError):
+                    continue
     return logs
 
 
@@ -186,8 +200,8 @@ async def get_metrics():
                 load_by_minute[minute_key]["blocked"] += 1
             elif decision == 'THROTTLE':
                 load_by_minute[minute_key]["throttled"] += 1
-        except:
-            pass
+        except (ValueError, TypeError):
+            continue
     
     load_over_time = [{"time": k, **v} for k, v in sorted(load_by_minute.items())[-20:]]
     
@@ -200,8 +214,8 @@ async def get_metrics():
             dt = datetime.fromisoformat(ts)
             minute_key = dt.strftime('%H:%M')
             risk_by_minute[minute_key][tier] += 1
-        except:
-            pass
+        except (ValueError, TypeError):
+            continue
     
     risk_trend = [{"time": k, **v} for k, v in sorted(risk_by_minute.items())[-20:]]
     
@@ -216,8 +230,8 @@ async def get_metrics():
                 "time": dt.strftime('%H:%M:%S'),
                 "score": round(score, 2)
             })
-        except:
-            pass
+        except (ValueError, TypeError):
+            continue
     
     return {
         "total_queries": total_queries,
